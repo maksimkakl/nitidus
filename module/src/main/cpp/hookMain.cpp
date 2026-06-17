@@ -22,7 +22,7 @@ namespace hookMain {
     const char *name, int flags, const void *extinfo, const void *caller_addr
   ) {
     void *handle = reinterpret_cast<decltype(&dlopenX)>(dlopenO)(name, flags, extinfo, caller_addr);
-    if (std::string(name).ends_with("libil2cpp.so")) {
+    if (std::string(name).ends_with("libunity.so")) {
       il2cppHandle = handle;
       shadowhook_unhook(linkerStub);
       il2cppThread_ = std::thread(il2cppHook::HookIl2cpp, il2cppHandle);
