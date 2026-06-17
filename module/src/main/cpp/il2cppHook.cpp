@@ -49,27 +49,55 @@ namespace il2cppHook {
   // HINT: define hooks here
 
   static void initURHook() {
-    UR::Init(il2cppHandle, UR::Mode::Il2Cpp);
-    UR::ThreadAttach();
-    LOGD("il2cpp thread attached, tid: %d", gettid());
-
-    // =================================================================
-    // HINT: add hooks here
+      LOGD("initURHook tid: %d", gettid());
+  
+      uintptr_t base = 0;
+      FILE* fp = fopen("/proc/self/maps", "r");
+      if (fp) {
+          char line[512];
+          while (fgets(line, sizeof(line), fp)) {
+              if (strstr(line, "libunity.so")) {
+                  sscanf(line, "%" PRIxPTR, &base);
+                  break;
+              }
+          }
+          fclose(fp);
+      }
+      LOGD("libunity.so base: 0x%" PRIxPTR, base);
+  
+      uintptr_t targetAddr = base + 0x75B4998; // начало функции как во Frida
+      ADD_HOOK(getToken, targetAddr)
   }
-
-  DEF_HOOK(il2cppInit, int, (const char *domain_name)) {
-    int ret = il2cppInitOrig(domain_name);
-    if (ASYNC_INIT) {
-      initThread = std::thread(initURHook);
-    } else {
-      initURHook();
-    }
-    return ret;
+  
+  // Аналог onLeave во Frida — вызываем оригинал, читаем результат
+  DEF_HOOK(getToken, void*, (void* self)) {
+      void* retval = getTokenOrig(self); // вызов оригинала
+  
+      // Аналог onLeave retval
+      if (retval && (uintptr_t)retval > 0x10000000) {
+          int32_t length = *(int32_t*)((uintptr_t)retval + 0x10);
+          if (length > 0 && length < 5000) {
+              char16_t* chars = (char16_t*)((uintptr_t)retval + 0x14);
+              std::string token;
+              for (int i = 0; i < length; i++) {
+                  if (chars[i] < 0x80) token += (char)chars[i];
+                  else token += '?';
+              }
+              LOGD("======================================");
+              LOGD("[TOKEN] VALUE: %s", token.c_str());
+              LOGD("Длина: %d", length);
+              LOGD("======================================");
+          }
+      } else {
+          LOGD("[-] Метод вернул null");
+      }
+  
+      return retval; // обязательно возвращаем!
   }
 
   void HookIl2cpp(void *handle) {
-    il2cppHandle     = handle;
-    auto pIl2cppInit = reinterpret_cast<int (*)(const char *)>(dlsym(il2cppHandle, "il2cpp_init"));
-    ADD_HOOK(il2cppInit, pIl2cppInit)
+      il2cppHandle = handle;
+      // il2cpp_init нет в libunity.so, запускаем напрямую
+      initThread = std::thread(initURHook);
   }
 }
