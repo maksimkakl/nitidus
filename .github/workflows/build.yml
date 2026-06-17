@@ -10,7 +10,9 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
       - name: Build
-        run: ./gradlew :module:assembleRelease
+        run: |
+          chmod +x gradlew
+          ./gradlew :module:assembleRelease
       - uses: actions/upload-artifact@v4
         with:
           name: module
