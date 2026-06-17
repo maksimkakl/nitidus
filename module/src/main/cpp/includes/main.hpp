@@ -3,7 +3,7 @@
 #include <android/log.h>
 
 // HINT: replace app id here
-#define NTD_TARGET_APP "com.company.game"
+#define NTD_TARGET_APP "com.axlebolt.standoff2"
 #define NTD_MODULE_NAME "nitidus"
 
 #define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, NTD_MODULE_NAME, __VA_ARGS__)
