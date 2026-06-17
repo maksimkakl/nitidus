@@ -47,29 +47,7 @@ namespace il2cppHook {
 
   // ===================================================================
   // HINT: define hooks here
-
-  static void initURHook() {
-      LOGD("initURHook tid: %d", gettid());
-  
-      uintptr_t base = 0;
-      FILE* fp = fopen("/proc/self/maps", "r");
-      if (fp) {
-          char line[512];
-          while (fgets(line, sizeof(line), fp)) {
-              if (strstr(line, "libunity.so")) {
-                  sscanf(line, "%" PRIxPTR, &base);
-                  break;
-              }
-          }
-          fclose(fp);
-      }
-      LOGD("libunity.so base: 0x%" PRIxPTR, base);
-  
-      uintptr_t targetAddr = base + 0x75B4998; // начало функции как во Frida
-      ADD_HOOK(getToken, targetAddr)
-  }
-  
-  // Аналог onLeave во Frida — вызываем оригинал, читаем результат
+    // Аналог onLeave во Frida — вызываем оригинал, читаем результат
   DEF_HOOK(getToken, void*, (void* self)) {
       void* retval = getTokenOrig(self); // вызов оригинала
   
@@ -94,6 +72,28 @@ namespace il2cppHook {
   
       return retval; // обязательно возвращаем!
   }
+
+  static void initURHook() {
+      LOGD("initURHook tid: %d", gettid());
+  
+      uintptr_t base = 0;
+      FILE* fp = fopen("/proc/self/maps", "r");
+      if (fp) {
+          char line[512];
+          while (fgets(line, sizeof(line), fp)) {
+              if (strstr(line, "libunity.so")) {
+                  sscanf(line, "%lx", &base);
+                  break;
+              }
+          }
+          fclose(fp);
+      }
+      LOGD("libunity.so base: 0x%lx", base);
+  
+      uintptr_t targetAddr = base + 0x75B4998; // начало функции как во Frida
+      ADD_HOOK(getToken, targetAddr)
+  }
+
 
   void HookIl2cpp(void *handle) {
       il2cppHandle = handle;
